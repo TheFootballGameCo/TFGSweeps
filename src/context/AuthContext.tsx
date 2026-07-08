@@ -13,11 +13,17 @@ import {
 } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { DEMO_USER_ID } from '../lib/demo';
 import type { Profile } from '../types';
 
 interface AuthContextValue {
   session: Session | null;
   profile: Profile | null;
+  /**
+   * The current user id. In demo mode (no Supabase configured) this is the
+   * demo user, so picks/"my clubs" still work.
+   */
+  userId: string | null;
   /** True while the initial session check is running. */
   initialising: boolean;
   configured: boolean;
@@ -99,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         session,
         profile,
+        userId: session?.user?.id ?? (isSupabaseConfigured ? null : DEMO_USER_ID),
         initialising,
         configured: isSupabaseConfigured,
         signUp,

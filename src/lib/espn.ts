@@ -11,6 +11,7 @@
 
 import type { Match, MatchStatus, GoalEvent, TableRow, Club } from '../types';
 import { API, SEASON } from '../config/app';
+import { FALLBACK_CLUBS } from './clubs';
 
 // --- Minimal typings for the slice of ESPN's response we use ---
 interface EspnCompetitor {
@@ -194,12 +195,17 @@ export async function fetchTable(): Promise<{ table: TableRow[]; clubs: Club[] }
     .filter((row) => row.teamId)
     .sort((a, b) => a.rank - b.rank || b.points - a.points);
 
-  const clubs: Club[] = table.map((row) => ({
-    id: row.teamId,
-    name: row.name,
-    abbreviation: row.abbreviation,
-    logo: row.logo,
-  }));
+  // Before a new season's table exists, fall back to the static club list so
+  // leagues can still draft clubs.
+  const clubs: Club[] =
+    table.length > 0
+      ? table.map((row) => ({
+          id: row.teamId,
+          name: row.name,
+          abbreviation: row.abbreviation,
+          logo: row.logo,
+        }))
+      : FALLBACK_CLUBS;
 
   return { table, clubs };
 }

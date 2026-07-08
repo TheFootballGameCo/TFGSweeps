@@ -10,7 +10,7 @@ import MemberAvatar from '../components/MemberAvatar';
 
 export default function Teams() {
   const { data } = useData();
-  const { session } = useAuth();
+  const { userId } = useAuth();
   const {
     members,
     teamPicks,
@@ -30,7 +30,7 @@ export default function Teams() {
     () => new Map(teamPicks.map((p) => [p.team_id, p.user_id])),
     [teamPicks]
   );
-  const myScorer = scorerPicks.find((p) => p.user_id === session?.user?.id) ?? null;
+  const myScorer = scorerPicks.find((p) => p.user_id === userId) ?? null;
 
   async function handleAssign(teamId: string, teamName: string, userId: string) {
     setBusy(true);

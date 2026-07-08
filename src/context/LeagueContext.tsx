@@ -3,6 +3,11 @@
 //   - the user's leagues + the "active" one (persisted per device)
 //   - members, team picks and scorer picks for the active league
 //   - actions: create / join / switch league, assign teams, set scorer pick
+//
+// DEMO MODE: when Supabase isn't configured, a sample league (4 players,
+// 5 clubs each) is served from memory. Assignments and scorer picks still
+// work — they just don't persist. Creating/joining real leagues needs the
+// backend.
 // ---------------------------------------------------------------------------
 
 import {
@@ -13,12 +18,19 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import type { League, Membership, TeamPick, ScorerPick } from '../types';
-import { SEASON } from '../config/app';
+import { SEASON, MAX_LEAGUE_SIZE } from '../config/app';
+import {
+  DEMO_LEAGUE,
+  DEMO_MEMBERS,
+  DEMO_TEAM_PICKS,
+  DEMO_SCORER_PICKS,
+} from '../lib/demo';
 
 const ACTIVE_KEY = 'tfg-sweeps-active-league';
+const DEMO_ERROR = 'Demo mode — connect Supabase (see README) to use real leagues.';
 
 /** Readable join code: no ambiguous characters (0/O, 1/I/L). */
 function generateJoinCode(): string {
@@ -30,6 +42,35 @@ function generateJoinCode(): string {
   return code;
 }
 
+/** Fisher–Yates shuffle (copy). */
+function shuffle<T>(items: T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+/**
+ * Even allocation: every member gets exactly floor(clubs / members) clubs and
+ * any remainder stays unassigned (e.g. 3 players -> 6 each, 2 left out).
+ */
+function buildAllocation(
+  clubs: Array<{ id: string; name: string }>,
+  memberIds: string[],
+  leagueId: string
+): Array<Omit<TeamPick, 'id'>> {
+  const perMember = Math.floor(clubs.length / memberIds.length);
+  const shuffled = shuffle(clubs).slice(0, perMember * memberIds.length);
+  return shuffled.map((club, i) => ({
+    league_id: leagueId,
+    user_id: memberIds[i % memberIds.length],
+    team_id: club.id,
+    team_name: club.name,
+  }));
+}
+
 interface LeagueContextValue {
   leagues: League[];
   activeLeague: League | null;
@@ -38,12 +79,13 @@ interface LeagueContextValue {
   scorerPicks: ScorerPick[];
   loadingLeagues: boolean;
   isAdmin: boolean;
+  isDemo: boolean;
   setActiveLeagueId: (id: string) => void;
   createLeague: (name: string) => Promise<{ error: string | null; league?: League }>;
   joinLeague: (code: string) => Promise<{ error: string | null; leagueId?: string }>;
   leaveLeague: (leagueId: string) => Promise<string | null>;
   assignTeam: (teamId: string, teamName: string, userId: string | null) => Promise<string | null>;
-  randomiseTeams: (clubIds: Array<{ id: string; name: string }>) => Promise<string | null>;
+  randomiseTeams: (clubs: Array<{ id: string; name: string }>) => Promise<string | null>;
   setScorerPick: (playerName: string) => Promise<string | null>;
   refreshLeagueData: () => Promise<void>;
 }
@@ -51,28 +93,34 @@ interface LeagueContextValue {
 const LeagueContext = createContext<LeagueContextValue | null>(null);
 
 export function LeagueProvider({ children }: { children: ReactNode }) {
-  const { session } = useAuth();
-  const userId = session?.user?.id ?? null;
+  const { userId } = useAuth();
+  const isDemo = !isSupabaseConfigured;
 
-  const [leagues, setLeagues] = useState<League[]>([]);
-  const [activeLeagueId, setActiveId] = useState<string | null>(
-    () => localStorage.getItem(ACTIVE_KEY)
+  const [leagues, setLeagues] = useState<League[]>(isDemo ? [DEMO_LEAGUE] : []);
+  const [activeLeagueId, setActiveId] = useState<string | null>(() =>
+    isDemo ? DEMO_LEAGUE.id : localStorage.getItem(ACTIVE_KEY)
   );
-  const [members, setMembers] = useState<Membership[]>([]);
-  const [teamPicks, setTeamPicks] = useState<TeamPick[]>([]);
-  const [scorerPicks, setScorerPicks] = useState<ScorerPick[]>([]);
-  const [loadingLeagues, setLoadingLeagues] = useState(true);
+  const [members, setMembers] = useState<Membership[]>(isDemo ? DEMO_MEMBERS : []);
+  const [teamPicks, setTeamPicks] = useState<TeamPick[]>(isDemo ? DEMO_TEAM_PICKS : []);
+  const [scorerPicks, setScorerPicks] = useState<ScorerPick[]>(
+    isDemo ? DEMO_SCORER_PICKS : []
+  );
+  const [loadingLeagues, setLoadingLeagues] = useState(!isDemo);
 
   const activeLeague = leagues.find((l) => l.id === activeLeagueId) ?? null;
   const isAdmin = members.some((m) => m.user_id === userId && m.role === 'admin');
 
-  const setActiveLeagueId = useCallback((id: string) => {
-    localStorage.setItem(ACTIVE_KEY, id);
-    setActiveId(id);
-  }, []);
+  const setActiveLeagueId = useCallback(
+    (id: string) => {
+      if (!isDemo) localStorage.setItem(ACTIVE_KEY, id);
+      setActiveId(id);
+    },
+    [isDemo]
+  );
 
-  // --- Load my leagues ---
+  // --- Load my leagues (real mode only) ---
   const loadLeagues = useCallback(async () => {
+    if (isDemo) return;
     if (!userId) {
       setLeagues([]);
       setLoadingLeagues(false);
@@ -89,7 +137,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       .sort((a, b) => a.created_at.localeCompare(b.created_at));
     setLeagues(list);
     setLoadingLeagues(false);
-  }, [userId]);
+  }, [userId, isDemo]);
 
   useEffect(() => {
     loadLeagues();
@@ -97,15 +145,15 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
 
   // Default the active league to the first one if none is set / it vanished.
   useEffect(() => {
-    if (loadingLeagues) return;
-    if (leagues.length === 0) return;
+    if (isDemo || loadingLeagues || leagues.length === 0) return;
     if (!activeLeagueId || !leagues.some((l) => l.id === activeLeagueId)) {
       setActiveLeagueId(leagues[0].id);
     }
-  }, [leagues, activeLeagueId, loadingLeagues, setActiveLeagueId]);
+  }, [leagues, activeLeagueId, loadingLeagues, setActiveLeagueId, isDemo]);
 
-  // --- Load the active league's members + picks ---
+  // --- Load the active league's members + picks (real mode only) ---
   const refreshLeagueData = useCallback(async () => {
+    if (isDemo) return;
     if (!activeLeagueId || !userId) {
       setMembers([]);
       setTeamPicks([]);
@@ -131,7 +179,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
     );
     setTeamPicks((teamsRes.data ?? []) as TeamPick[]);
     setScorerPicks((scorersRes.data ?? []) as ScorerPick[]);
-  }, [activeLeagueId, userId]);
+  }, [activeLeagueId, userId, isDemo]);
 
   useEffect(() => {
     refreshLeagueData();
@@ -141,6 +189,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
 
   const createLeague = useCallback(
     async (name: string) => {
+      if (isDemo) return { error: DEMO_ERROR };
       if (!userId) return { error: 'Not signed in' };
       const join_code = generateJoinCode();
       const { data, error } = await supabase
@@ -150,7 +199,6 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
         .single();
       if (error) return { error: error.message };
       const league = data as League;
-      // Owner becomes admin member.
       const { error: memberError } = await supabase
         .from('memberships')
         .insert({ league_id: league.id, user_id: userId, role: 'admin' });
@@ -159,11 +207,12 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       setActiveLeagueId(league.id);
       return { error: null, league };
     },
-    [userId, loadLeagues, setActiveLeagueId]
+    [userId, loadLeagues, setActiveLeagueId, isDemo]
   );
 
   const joinLeague = useCallback(
     async (code: string) => {
+      if (isDemo) return { error: DEMO_ERROR };
       if (!userId) return { error: 'Not signed in' };
       const { data, error } = await supabase.rpc('join_league', { code });
       if (error) return { error: error.message };
@@ -172,11 +221,12 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       setActiveLeagueId(leagueId);
       return { error: null, leagueId };
     },
-    [userId, loadLeagues, setActiveLeagueId]
+    [userId, loadLeagues, setActiveLeagueId, isDemo]
   );
 
   const leaveLeague = useCallback(
     async (leagueId: string) => {
+      if (isDemo) return DEMO_ERROR;
       if (!userId) return 'Not signed in';
       const { error } = await supabase
         .from('memberships')
@@ -188,14 +238,32 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       await loadLeagues();
       return null;
     },
-    [userId, activeLeagueId, loadLeagues]
+    [userId, activeLeagueId, loadLeagues, isDemo]
   );
 
   /** Admin: give a club to a member (or unassign with null). */
   const assignTeam = useCallback(
     async (teamId: string, teamName: string, assignTo: string | null) => {
       if (!activeLeagueId) return 'No active league';
-      // Remove any existing ownership of this club in this league.
+
+      if (isDemo) {
+        setTeamPicks((picks) => {
+          const without = picks.filter((p) => p.team_id !== teamId);
+          if (!assignTo) return without;
+          return [
+            ...without,
+            {
+              id: `demo-t-${teamId}`,
+              league_id: activeLeagueId,
+              user_id: assignTo,
+              team_id: teamId,
+              team_name: teamName,
+            },
+          ];
+        });
+        return null;
+      }
+
       const { error: delError } = await supabase
         .from('team_picks')
         .delete()
@@ -214,27 +282,25 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       await refreshLeagueData();
       return null;
     },
-    [activeLeagueId, refreshLeagueData]
+    [activeLeagueId, refreshLeagueData, isDemo]
   );
 
-  /** Admin: shuffle every club across members as evenly as possible. */
+  /** Admin: shuffle clubs evenly across members; remainder stays unassigned. */
   const randomiseTeams = useCallback(
     async (clubs: Array<{ id: string; name: string }>) => {
       if (!activeLeagueId) return 'No active league';
       if (members.length === 0) return 'No members to assign to';
 
-      const shuffled = [...clubs];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      const rows = buildAllocation(
+        clubs,
+        members.map((m) => m.user_id),
+        activeLeagueId
+      );
+
+      if (isDemo) {
+        setTeamPicks(rows.map((r, i) => ({ ...r, id: `demo-t-${i}` })));
+        return null;
       }
-      const memberIds = members.map((m) => m.user_id);
-      const rows = shuffled.map((club, i) => ({
-        league_id: activeLeagueId,
-        user_id: memberIds[i % memberIds.length],
-        team_id: club.id,
-        team_name: club.name,
-      }));
 
       const { error: delError } = await supabase
         .from('team_picks')
@@ -246,13 +312,27 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       await refreshLeagueData();
       return null;
     },
-    [activeLeagueId, members, refreshLeagueData]
+    [activeLeagueId, members, refreshLeagueData, isDemo]
   );
 
   /** Member: set (or change) my goalscorer pick. */
   const setScorerPick = useCallback(
     async (playerName: string) => {
       if (!activeLeagueId || !userId) return 'No active league';
+
+      if (isDemo) {
+        setScorerPicks((picks) => [
+          ...picks.filter((p) => p.user_id !== userId),
+          {
+            id: `demo-s-${userId}`,
+            league_id: activeLeagueId,
+            user_id: userId,
+            player_name: playerName,
+          },
+        ]);
+        return null;
+      }
+
       const { error } = await supabase
         .from('scorer_picks')
         .upsert(
@@ -263,7 +343,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
       await refreshLeagueData();
       return null;
     },
-    [activeLeagueId, userId, refreshLeagueData]
+    [activeLeagueId, userId, refreshLeagueData, isDemo]
   );
 
   return (
@@ -276,6 +356,7 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
         scorerPicks,
         loadingLeagues,
         isAdmin,
+        isDemo,
         setActiveLeagueId,
         createLeague,
         joinLeague,
@@ -296,3 +377,5 @@ export function useLeague(): LeagueContextValue {
   if (!ctx) throw new Error('useLeague must be used within LeagueProvider');
   return ctx;
 }
+
+export { MAX_LEAGUE_SIZE };

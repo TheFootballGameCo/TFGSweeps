@@ -15,8 +15,21 @@ free public feed (no API key). Accounts and leagues live in Supabase.
 - **Goalscorer**: every member picks one player; **+1 pt per PL goal**.
 - **Leaderboard**: club points + scorer points, ranked with GD then wins as
   tiebreakers. Nothing to update by hand — it all derives from the live feed.
+- **League size**: 3–5 players. The format works because each player combines
+  multiple clubs — 4 players x 5 clubs is the sweet spot; 3 players get 6 each
+  (2 clubs sit out); 5 players get 4 each. Randomise splits evenly and leaves
+  any remainder unassigned.
 - **Joining**: invite link (`/join/CODE`) or the 6-character code typed in-app.
-  Leagues cap at 20 members.
+
+## Demo mode (no setup needed)
+
+Run `npm install && npm run dev` with **no .env file** and the app boots into a
+sample league — 4 players, 5 clubs each, using real results from the 2025/26
+season — so you can explore every screen before touching Supabase. Club
+assignments and scorer picks work in-memory (they reset on refresh).
+
+> The season window is currently pointed at 2025/26 for the beta so there's a
+> full season of data on screen. Flip it in `src/config/app.ts` before launch.
 
 ## Setup
 

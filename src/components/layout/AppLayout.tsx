@@ -3,13 +3,22 @@ import type { ReactNode } from 'react';
 import Header from './Header';
 import { MobileNav } from './Navigation';
 import { useData } from '../../context/DataContext';
+import { useLeague } from '../../context/LeagueContext';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { error, data } = useData();
+  const { isDemo } = useLeague();
 
   return (
     <div className="min-h-screen bg-bg text-text">
       <Header />
+
+      {/* Demo banner: no backend connected, sample league in play. */}
+      {isDemo && (
+        <div className="border-b border-accent/20 bg-accent/10 px-4 py-1.5 text-center text-[11px] text-accent">
+          Demo mode — sample league with real 2025/26 results. Connect Supabase for live leagues.
+        </div>
+      )}
 
       {/* Data-status notice when live data can't be refreshed. */}
       {error && data && (

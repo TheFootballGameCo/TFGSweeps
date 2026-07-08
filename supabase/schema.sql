@@ -188,8 +188,10 @@ begin
   select count(*) into member_count
   from public.memberships where league_id = target_league;
 
-  if member_count >= 20 then
-    raise exception 'This league is full (20 members max)';
+  -- The format works because each player combines multiple clubs; leagues cap
+  -- at 5 players (4 clubs each). 4 players x 5 clubs is the sweet spot.
+  if member_count >= 5 then
+    raise exception 'This league is full (5 players max)';
   end if;
 
   insert into public.memberships (league_id, user_id, role)

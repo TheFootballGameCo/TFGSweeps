@@ -18,7 +18,6 @@ import Leaderboard from './pages/Leaderboard';
 import Matches from './pages/Matches';
 import Table from './pages/Table';
 import Teams from './pages/Teams';
-import SetupNotice from './pages/SetupNotice';
 
 function AppContent() {
   const { session, initialising, configured } = useAuth();
@@ -26,14 +25,18 @@ function AppContent() {
   const { data, loading, error, refresh } = useData();
   const location = useLocation();
 
-  // Supabase env vars missing: show setup instructions instead of a broken app.
-  if (!configured) return <SetupNotice />;
+  // Demo mode (no Supabase configured): skip auth entirely and serve the
+  // sample league so the whole app is explorable.
+  if (!configured) {
+    if (loading && !data) return <LoadingState />;
+    if (error && !data) return <ErrorState message={error} onRetry={refresh} />;
+  }
 
-  if (initialising) return <LoadingState label="Checking your session…" />;
+  if (configured && initialising) return <LoadingState label="Checking your session…" />;
 
   // Signed out: everything routes to /auth. Join links keep their target so
   // the user lands back on /join/CODE after signing in.
-  if (!session) {
+  if (configured && !session) {
     return (
       <Routes>
         <Route path="/auth" element={<Auth />} />
@@ -45,13 +48,13 @@ function AppContent() {
     );
   }
 
-  if (loadingLeagues) return <LoadingState label="Loading your leagues…" />;
+  if (configured && loadingLeagues) return <LoadingState label="Loading your leagues…" />;
 
   // Signed in but no league yet: onboarding.
   const needsLeague = leagues.length === 0;
 
   // First live-data load / hard failure.
-  if (!needsLeague) {
+  if (configured && !needsLeague) {
     if (loading && !data) return <LoadingState />;
     if (error && !data) return <ErrorState message={error} onRetry={refresh} />;
   }

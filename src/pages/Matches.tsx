@@ -13,17 +13,14 @@ type Filter = 'all' | 'results' | 'upcoming' | 'mine';
 
 export default function Matches() {
   const { data } = useData();
-  const { session } = useAuth();
+  const { userId } = useAuth();
   const { teamPicks } = useLeague();
   const { ownerFor } = useStandings();
   const [filter, setFilter] = useState<Filter>('all');
 
   const myTeamIds = useMemo(
-    () =>
-      new Set(
-        teamPicks.filter((p) => p.user_id === session?.user?.id).map((p) => p.team_id)
-      ),
-    [teamPicks, session?.user?.id]
+    () => new Set(teamPicks.filter((p) => p.user_id === userId).map((p) => p.team_id)),
+    [teamPicks, userId]
   );
 
   const filtered = useMemo(() => {
