@@ -1,5 +1,6 @@
-// League snapshot: mini leaderboard, live matches, next fixtures, invite card.
-import { useMemo, useState } from 'react';
+// League snapshot: mini leaderboard, prize pot, live matches, next fixtures,
+// invite card.
+import { useMemo, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useData } from '../context/DataContext';
 import { useLeague } from '../context/LeagueContext';
@@ -7,6 +8,88 @@ import { useStandings } from '../hooks/useStandings';
 import SectionHeading from '../components/SectionHeading';
 import MemberAvatar from '../components/MemberAvatar';
 import MatchCard from '../components/cards/MatchCard';
+
+/** Prize pot: stake per player x members = what's up for grabs. */
+function PrizePot() {
+  const { activeLeague, members, isAdmin, updateStake } = useLeague();
+  const { standings } = useStandings();
+  const [editing, setEditing] = useState(false);
+  const [stakeInput, setStakeInput] = useState('');
+
+  if (!activeLeague) return null;
+  const stake = activeLeague.stake_per_player;
+  const pot = stake * members.length;
+  const leader = standings[0];
+
+  async function saveStake(e: FormEvent) {
+    e.preventDefault();
+    const amount = Number(stakeInput);
+    if (!Number.isFinite(amount) || amount < 0) return;
+    await updateStake(Math.round(amount * 100) / 100);
+    setEditing(false);
+  }
+
+  return (
+    <section>
+      <SectionHeading
+        title="Prize pot"
+        action={
+          isAdmin ? (
+            <button
+              onClick={() => {
+                setStakeInput(String(stake || ''));
+                setEditing(!editing);
+              }}
+              className="text-xs font-medium text-accent"
+            >
+              {editing ? 'Cancel' : 'Edit stake'}
+            </button>
+          ) : undefined
+        }
+      />
+      <div className="card p-4">
+        {editing ? (
+          <form onSubmit={saveStake} className="flex items-center gap-2">
+            <span className="text-sm font-semibold">£</span>
+            <input
+              className="input"
+              type="number"
+              min="0"
+              step="0.5"
+              placeholder="Stake per player"
+              value={stakeInput}
+              onChange={(e) => setStakeInput(e.target.value)}
+              autoFocus
+            />
+            <button className="btn-primary shrink-0">Save</button>
+          </form>
+        ) : pot > 0 ? (
+          <div className="flex items-center gap-4">
+            <span className="text-3xl font-extrabold tracking-tight text-accent">
+              £{pot % 1 === 0 ? pot : pot.toFixed(2)}
+            </span>
+            <div className="min-w-0 text-xs text-muted">
+              <p>
+                £{stake % 1 === 0 ? stake : stake.toFixed(2)} a head · {members.length} player
+                {members.length === 1 ? '' : 's'} · winner takes the pot
+              </p>
+              {leader && leader.totalPoints > 0 && (
+                <p className="mt-0.5 truncate">
+                  Currently heading to <span className="font-semibold text-text">{leader.name}</span>
+                </p>
+              )}
+              <p className="mt-0.5">Money is sorted between you outside the app.</p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-muted">
+            No stake set yet{isAdmin ? ' — tap Edit stake to set how much each player puts in.' : '.'}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
 
 export default function Dashboard() {
   const { data } = useData();
@@ -68,6 +151,8 @@ export default function Dashboard() {
           </div>
         )}
       </section>
+
+      <PrizePot />
 
       {/* Live now */}
       {live.length > 0 && (

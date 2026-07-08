@@ -117,8 +117,23 @@ function monthRanges(start: string, end: string): string[] {
   return ranges;
 }
 
-/** Fetch and parse every fixture in the season window. */
-export async function fetchSeasonMatches(): Promise<Match[]> {
+/**
+ * Fetch and parse every fixture in the season window.
+ * Falls back to the generated sample season when the feed is unreachable
+ * (e.g. running the built app straight from a file with no proxy).
+ */
+export async function fetchSeasonMatches(): Promise<{ matches: Match[]; sample: boolean }> {
+  try {
+    const matches = await fetchSeasonMatchesLive();
+    if (matches.length === 0) throw new Error('Feed returned no fixtures');
+    return { matches, sample: false };
+  } catch {
+    const { generateSampleSeason } = await import('./sampleSeason');
+    return { matches: generateSampleSeason().matches, sample: true };
+  }
+}
+
+async function fetchSeasonMatchesLive(): Promise<Match[]> {
   const ranges = monthRanges(SEASON.startDate, SEASON.endDate);
   const responses = await Promise.all(
     ranges.map(async (dates) => {
@@ -161,8 +176,26 @@ function stat(entry: EspnStandingEntry, name: string): number {
   return typeof s?.value === 'number' ? s.value : 0;
 }
 
-/** Fetch and parse the live PL table. Also yields the club list. */
-export async function fetchTable(): Promise<{ table: TableRow[]; clubs: Club[] }> {
+/**
+ * Fetch and parse the live PL table. Also yields the club list.
+ * Same fallback behaviour as fetchSeasonMatches.
+ */
+export async function fetchTable(): Promise<{
+  table: TableRow[];
+  clubs: Club[];
+  sample: boolean;
+}> {
+  try {
+    const live = await fetchTableLive();
+    return { ...live, sample: false };
+  } catch {
+    const { generateSampleSeason } = await import('./sampleSeason');
+    const sample = generateSampleSeason();
+    return { table: sample.table, clubs: sample.clubs, sample: true };
+  }
+}
+
+async function fetchTableLive(): Promise<{ table: TableRow[]; clubs: Club[] }> {
   const res = await fetch(`${API.standingsPath}?season=${SEASON.year}`);
   if (!res.ok) throw new Error(`Standings request failed (${res.status})`);
   const body = (await res.json()) as {

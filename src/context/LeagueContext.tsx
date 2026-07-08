@@ -81,12 +81,21 @@ interface LeagueContextValue {
   isAdmin: boolean;
   isDemo: boolean;
   setActiveLeagueId: (id: string) => void;
-  createLeague: (name: string) => Promise<{ error: string | null; league?: League }>;
+  createLeague: (
+    name: string,
+    stakePerPlayer: number
+  ) => Promise<{ error: string | null; league?: League }>;
   joinLeague: (code: string) => Promise<{ error: string | null; leagueId?: string }>;
   leaveLeague: (leagueId: string) => Promise<string | null>;
   assignTeam: (teamId: string, teamName: string, userId: string | null) => Promise<string | null>;
+  /** Member: claim an unowned club for yourself. */
+  claimTeam: (teamId: string, teamName: string) => Promise<string | null>;
+  /** Member: give up one of your own clubs. */
+  releaseTeam: (teamId: string) => Promise<string | null>;
   randomiseTeams: (clubs: Array<{ id: string; name: string }>) => Promise<string | null>;
   setScorerPick: (playerName: string) => Promise<string | null>;
+  /** Admin: change the per-player stake shown in the prize pot. */
+  updateStake: (amount: number) => Promise<string | null>;
   refreshLeagueData: () => Promise<void>;
 }
 
@@ -129,7 +138,9 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
     setLoadingLeagues(true);
     const { data } = await supabase
       .from('memberships')
-      .select('league_id, leagues (id, name, join_code, owner_id, season_label, created_at)')
+      .select(
+        'league_id, leagues (id, name, join_code, owner_id, season_label, stake_per_player, created_at)'
+      )
       .eq('user_id', userId);
     const list = (data ?? [])
       .map((row) => row.leagues as unknown as League)
@@ -188,13 +199,19 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
   // --- Actions ---
 
   const createLeague = useCallback(
-    async (name: string) => {
+    async (name: string, stakePerPlayer: number) => {
       if (isDemo) return { error: DEMO_ERROR };
       if (!userId) return { error: 'Not signed in' };
       const join_code = generateJoinCode();
       const { data, error } = await supabase
         .from('leagues')
-        .insert({ name, join_code, owner_id: userId, season_label: SEASON.label })
+        .insert({
+          name,
+          join_code,
+          owner_id: userId,
+          season_label: SEASON.label,
+          stake_per_player: stakePerPlayer,
+        })
         .select()
         .single();
       if (error) return { error: error.message };
@@ -315,6 +332,90 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
     [activeLeagueId, members, refreshLeagueData, isDemo]
   );
 
+  /** Member: claim an unowned club for yourself. */
+  const claimTeam = useCallback(
+    async (teamId: string, teamName: string) => {
+      if (!activeLeagueId || !userId) return 'No active league';
+      if (teamPicks.some((p) => p.team_id === teamId)) return 'That club is already taken';
+
+      if (isDemo) {
+        setTeamPicks((picks) => [
+          ...picks.filter((p) => p.team_id !== teamId),
+          {
+            id: `demo-t-${teamId}`,
+            league_id: activeLeagueId,
+            user_id: userId,
+            team_id: teamId,
+            team_name: teamName,
+          },
+        ]);
+        return null;
+      }
+
+      const { error } = await supabase.from('team_picks').insert({
+        league_id: activeLeagueId,
+        user_id: userId,
+        team_id: teamId,
+        team_name: teamName,
+      });
+      if (error)
+        return error.code === '23505' ? 'That club was just taken by someone else' : error.message;
+      await refreshLeagueData();
+      return null;
+    },
+    [activeLeagueId, userId, teamPicks, refreshLeagueData, isDemo]
+  );
+
+  /** Member: give up one of your own clubs. */
+  const releaseTeam = useCallback(
+    async (teamId: string) => {
+      if (!activeLeagueId || !userId) return 'No active league';
+
+      if (isDemo) {
+        setTeamPicks((picks) =>
+          picks.filter((p) => !(p.team_id === teamId && p.user_id === userId))
+        );
+        return null;
+      }
+
+      const { error } = await supabase
+        .from('team_picks')
+        .delete()
+        .eq('league_id', activeLeagueId)
+        .eq('team_id', teamId)
+        .eq('user_id', userId);
+      if (error) return error.message;
+      await refreshLeagueData();
+      return null;
+    },
+    [activeLeagueId, userId, refreshLeagueData, isDemo]
+  );
+
+  /** Admin: change the per-player stake shown in the prize pot. */
+  const updateStake = useCallback(
+    async (amount: number) => {
+      if (!activeLeagueId) return 'No active league';
+
+      if (isDemo) {
+        setLeagues((list) =>
+          list.map((l) =>
+            l.id === activeLeagueId ? { ...l, stake_per_player: amount } : l
+          )
+        );
+        return null;
+      }
+
+      const { error } = await supabase
+        .from('leagues')
+        .update({ stake_per_player: amount })
+        .eq('id', activeLeagueId);
+      if (error) return error.message;
+      await loadLeagues();
+      return null;
+    },
+    [activeLeagueId, loadLeagues, isDemo]
+  );
+
   /** Member: set (or change) my goalscorer pick. */
   const setScorerPick = useCallback(
     async (playerName: string) => {
@@ -362,8 +463,11 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
         joinLeague,
         leaveLeague,
         assignTeam,
+        claimTeam,
+        releaseTeam,
         randomiseTeams,
         setScorerPick,
+        updateStake,
         refreshLeagueData,
       }}
     >

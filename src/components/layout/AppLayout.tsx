@@ -16,7 +16,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       {/* Demo banner: no backend connected, sample league in play. */}
       {isDemo && (
         <div className="border-b border-accent/20 bg-accent/10 px-4 py-1.5 text-center text-[11px] text-accent">
-          Demo mode — sample league with real 2025/26 results. Connect Supabase for live leagues.
+          Demo mode — sample league{data?.usingSampleData ? ' with simulated results' : ' with real 2025/26 results'}. Connect Supabase for live leagues.
         </div>
       )}
 

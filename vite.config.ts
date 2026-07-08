@@ -7,6 +7,9 @@ import react from '@vitejs/plugin-react';
 // CORS during `npm run dev`. In production (Vercel), the same paths are handled
 // by the serverless functions in /api — so app code is identical in both.
 export default defineConfig({
+  // Relative asset paths so the built app can be opened straight from a file
+  // (dist/index.html) as well as served from a host root.
+  base: './',
   plugins: [react()],
   server: {
     port: 5173,

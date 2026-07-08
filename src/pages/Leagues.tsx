@@ -13,6 +13,7 @@ export default function Leagues() {
   const navigate = useNavigate();
 
   const [newName, setNewName] = useState('');
+  const [stake, setStake] = useState('10');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -21,7 +22,8 @@ export default function Leagues() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const { error: err } = await createLeague(newName.trim());
+    const stakeAmount = Math.max(0, Number(stake) || 0);
+    const { error: err } = await createLeague(newName.trim(), stakeAmount);
     setBusy(false);
     if (err) setError(err);
     else navigate('/');
@@ -108,9 +110,26 @@ export default function Leagues() {
             minLength={2}
             maxLength={60}
           />
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">
+              Stake per player (£) — settled between you outside the app
+            </label>
+            <input
+              className="input"
+              type="number"
+              min="0"
+              step="0.5"
+              value={stake}
+              onChange={(e) => setStake(e.target.value)}
+            />
+          </div>
           <button className="btn-primary w-full" disabled={busy}>
             Create league
           </button>
+          <p className="text-[11px] text-muted">
+            Creating a league costs £5 (free during the beta). Joining is always free —
+            that's how we keep the app ad-free. Leagues are 3–5 players.
+          </p>
         </form>
 
         {/* Join */}

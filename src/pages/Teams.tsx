@@ -1,10 +1,12 @@
 // Club ownership + goalscorer picks for the active league.
-// Admins can assign each club to a member (or randomise the lot); every member
-// sets their own goalscorer pick here too.
+// Clubs are PICKED by the people in the league: anyone can claim an unowned
+// club or give up their own. Admins can also assign directly and use Quick
+// fill as a testing shortcut. Every member sets their own goalscorer here.
 import { useMemo, useState, type FormEvent } from 'react';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { useLeague } from '../context/LeagueContext';
+import { MAX_LEAGUE_SIZE } from '../config/app';
 import SectionHeading from '../components/SectionHeading';
 import MemberAvatar from '../components/MemberAvatar';
 
@@ -17,6 +19,8 @@ export default function Teams() {
     scorerPicks,
     isAdmin,
     assignTeam,
+    claimTeam,
+    releaseTeam,
     randomiseTeams,
     setScorerPick,
   } = useLeague();
@@ -32,6 +36,11 @@ export default function Teams() {
   );
   const myScorer = scorerPicks.find((p) => p.user_id === userId) ?? null;
 
+  // Fair-share cap: nobody claims more than their slice of the 20 clubs.
+  const perPlayer = members.length > 0 ? Math.floor(clubs.length / members.length) : 0;
+  const myClubCount = teamPicks.filter((p) => p.user_id === userId).length;
+  const atMyLimit = perPlayer > 0 && myClubCount >= perPlayer;
+
   async function handleAssign(teamId: string, teamName: string, userId: string) {
     setBusy(true);
     setError(null);
@@ -41,10 +50,26 @@ export default function Teams() {
   }
 
   async function handleRandomise() {
-    if (!window.confirm('Shuffle ALL clubs randomly across members? This replaces the current allocation.')) return;
+    if (!window.confirm('Quick fill shuffles ALL clubs across members (handy for testing). This replaces the current allocation. Continue?')) return;
     setBusy(true);
     setError(null);
     const err = await randomiseTeams(clubs.map((c) => ({ id: c.id, name: c.name })));
+    if (err) setError(err);
+    setBusy(false);
+  }
+
+  async function handleClaim(teamId: string, teamName: string) {
+    setBusy(true);
+    setError(null);
+    const err = await claimTeam(teamId, teamName);
+    if (err) setError(err);
+    setBusy(false);
+  }
+
+  async function handleRelease(teamId: string) {
+    setBusy(true);
+    setError(null);
+    const err = await releaseTeam(teamId);
     if (err) setError(err);
     setBusy(false);
   }
@@ -103,11 +128,19 @@ export default function Teams() {
                 disabled={busy}
                 className="text-xs font-semibold text-accent disabled:opacity-50"
               >
-                🎲 Randomise all
+                🎲 Quick fill (testing)
               </button>
             ) : undefined
           }
         />
+
+        <p className="mb-3 text-xs text-muted">
+          Clubs are picked by the players — claim yours below ({perPlayer > 0 ? `${perPlayer} each` : 'waiting for members'}
+          {members.length > 0 && clubs.length % members.length !== 0
+            ? `, ${clubs.length % members.length} left out`
+            : ''}
+          ).
+        </p>
 
         {error && <p className="mb-3 text-xs text-red-500">{error}</p>}
 
@@ -120,6 +153,7 @@ export default function Teams() {
             {clubs.map((club) => {
               const ownerId = ownerByTeam.get(club.id) ?? '';
               const owner = members.find((m) => m.user_id === ownerId);
+              const isMine = ownerId === userId;
               return (
                 <div key={club.id} className="flex items-center gap-3 px-4 py-2.5">
                   {club.logo ? (
@@ -136,7 +170,7 @@ export default function Teams() {
                       onChange={(e) => handleAssign(club.id, club.name, e.target.value)}
                       className="input w-40 shrink-0 py-1.5 text-xs"
                     >
-                      <option value="">Unassigned</option>
+                      <option value="">Unclaimed</option>
                       {members.map((m) => (
                         <option key={m.user_id} value={m.user_id}>
                           {m.profile?.display_name ?? 'Player'}
@@ -144,16 +178,33 @@ export default function Teams() {
                       ))}
                     </select>
                   ) : owner ? (
-                    <span className="flex items-center gap-1.5 text-xs text-muted">
-                      <MemberAvatar
-                        id={owner.user_id}
-                        name={owner.profile?.display_name ?? 'Player'}
-                        size={20}
-                      />
-                      {owner.profile?.display_name}
+                    <span className="flex items-center gap-2">
+                      <span className="flex items-center gap-1.5 text-xs text-muted">
+                        <MemberAvatar
+                          id={owner.user_id}
+                          name={owner.profile?.display_name ?? 'Player'}
+                          size={20}
+                        />
+                        {isMine ? 'You' : owner.profile?.display_name}
+                      </span>
+                      {isMine && (
+                        <button
+                          onClick={() => handleRelease(club.id)}
+                          disabled={busy}
+                          className="text-[11px] font-semibold text-red-500 disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      )}
                     </span>
                   ) : (
-                    <span className="text-xs text-muted">Unassigned</span>
+                    <button
+                      onClick={() => handleClaim(club.id, club.name)}
+                      disabled={busy || atMyLimit}
+                      className="rounded-full border border-accent px-3 py-1 text-[11px] font-semibold text-accent transition-colors hover:bg-accent hover:text-white disabled:opacity-40"
+                    >
+                      {atMyLimit ? 'Full' : 'Claim'}
+                    </button>
                   )}
                 </div>
               );
@@ -161,11 +212,12 @@ export default function Teams() {
           </div>
         )}
 
-        {!isAdmin && (
-          <p className="mt-2 text-[11px] text-muted">
-            Only the league admin can change club ownership.
-          </p>
-        )}
+        <p className="mt-2 text-[11px] text-muted">
+          {isAdmin
+            ? 'As admin you can assign any club directly; everyone else claims their own.'
+            : `Claim up to ${perPlayer || '—'} clubs. Remove one of yours to swap.`}{' '}
+          Leagues run with 3–{MAX_LEAGUE_SIZE} players.
+        </p>
       </section>
 
       {/* Members */}

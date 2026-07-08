@@ -14,6 +14,7 @@ export const DEMO_LEAGUE: League = {
   join_code: 'DEMO26',
   owner_id: DEMO_USER_ID,
   season_label: '2025/26',
+  stake_per_player: 10,
   created_at: '2025-08-01T00:00:00Z',
 };
 

@@ -38,12 +38,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     inFlight.current = true;
     setRefreshing(true);
     try {
-      const [matches, standings] = await Promise.all([fetchSeasonMatches(), fetchTable()]);
+      const [matchesRes, standings] = await Promise.all([fetchSeasonMatches(), fetchTable()]);
       setData({
-        matches,
+        matches: matchesRes.matches,
         table: standings.table,
         clubs: standings.clubs,
         lastUpdated: new Date().toISOString(),
+        usingSampleData: matchesRes.sample || standings.sample,
       });
       setError(null);
     } catch (err) {

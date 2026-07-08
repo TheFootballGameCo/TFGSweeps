@@ -59,6 +59,8 @@ export interface PlData {
   table: TableRow[];
   clubs: Club[];
   lastUpdated: string;
+  /** True when showing the generated sample season (live feed unreachable). */
+  usingSampleData: boolean;
 }
 
 // --- League / multiplayer (stored in Supabase) ---
@@ -74,6 +76,8 @@ export interface League {
   join_code: string;
   owner_id: string;
   season_label: string;
+  /** How much each player puts in the pot (settled outside the app). */
+  stake_per_player: number;
   created_at: string;
 }
 

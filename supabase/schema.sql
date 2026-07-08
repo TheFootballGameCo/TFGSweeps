@@ -44,6 +44,9 @@ create table if not exists public.leagues (
   join_code text not null unique,
   owner_id uuid not null references public.profiles (id) on delete cascade,
   season_label text not null default '2026/27',
+  -- Stake each player puts in the pot. Purely informational: money is settled
+  -- between players outside the app (keeps TFG clear of holding stakes).
+  stake_per_player numeric(8,2) not null default 0 check (stake_per_player >= 0),
   created_at timestamptz not null default now()
 );
 
@@ -144,13 +147,21 @@ create policy "insert own admin membership" on public.memberships
 create policy "leave league" on public.memberships
   for delete to authenticated using (user_id = auth.uid() or public.is_league_admin(league_id));
 
--- Team picks: members read; ADMINS manage the allocation.
+-- Team picks: members read. Clubs are PICKED by the players — any member can
+-- claim an unowned club for THEMSELVES (the unique (league_id, team_id)
+-- constraint stops double-claims) and release their own. Admins can also
+-- assign/remove any club directly.
 create policy "team picks readable" on public.team_picks
   for select to authenticated using (public.is_league_member(league_id));
-create policy "admin inserts team picks" on public.team_picks
-  for insert to authenticated with check (public.is_league_admin(league_id));
-create policy "admin deletes team picks" on public.team_picks
-  for delete to authenticated using (public.is_league_admin(league_id));
+create policy "claim or admin-assign team picks" on public.team_picks
+  for insert to authenticated with check (
+    public.is_league_admin(league_id)
+    or (user_id = auth.uid() and public.is_league_member(league_id))
+  );
+create policy "release own or admin deletes team picks" on public.team_picks
+  for delete to authenticated using (
+    public.is_league_admin(league_id) or user_id = auth.uid()
+  );
 
 -- Scorer picks: members read; each member manages their OWN pick.
 create policy "scorer picks readable" on public.scorer_picks
