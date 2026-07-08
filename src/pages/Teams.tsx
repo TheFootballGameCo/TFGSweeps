@@ -9,6 +9,7 @@ import { useLeague } from '../context/LeagueContext';
 import { MAX_LEAGUE_SIZE } from '../config/app';
 import SectionHeading from '../components/SectionHeading';
 import MemberAvatar from '../components/MemberAvatar';
+import ClubCrest from '../components/ClubCrest';
 
 export default function Teams() {
   const { data } = useData();
@@ -20,7 +21,6 @@ export default function Teams() {
     isAdmin,
     assignTeam,
     claimTeam,
-    releaseTeam,
     randomiseTeams,
     setScorerPick,
   } = useLeague();
@@ -59,6 +59,7 @@ export default function Teams() {
   }
 
   async function handleClaim(teamId: string, teamName: string) {
+    if (!window.confirm(`Claim ${teamName} for the whole season? Picks are final.`)) return;
     setBusy(true);
     setError(null);
     const err = await claimTeam(teamId, teamName);
@@ -66,19 +67,14 @@ export default function Teams() {
     setBusy(false);
   }
 
-  async function handleRelease(teamId: string) {
-    setBusy(true);
-    setError(null);
-    const err = await releaseTeam(teamId);
-    if (err) setError(err);
-    setBusy(false);
-  }
-
   async function handleScorer(e: FormEvent) {
     e.preventDefault();
+    const name = scorerInput.trim();
+    if (!window.confirm(`Lock in ${name} as your goalscorer for the whole season? This can't be changed.`))
+      return;
     setBusy(true);
     setError(null);
-    const err = await setScorerPick(scorerInput.trim());
+    const err = await setScorerPick(name);
     if (err) setError(err);
     else setScorerInput('');
     setBusy(false);
@@ -86,34 +82,45 @@ export default function Teams() {
 
   return (
     <div className="space-y-8">
-      {/* My goalscorer pick */}
+      {/* My goalscorer pick — one shot, locked once made */}
       <section>
         <SectionHeading title="My goalscorer" />
         <div className="card p-4">
-          {myScorer && (
-            <p className="mb-3 text-sm">
-              Current pick: <span className="font-semibold">{myScorer.player_name}</span>{' '}
-              <span className="text-xs text-muted">(+1 pt per PL goal)</span>
-            </p>
+          {myScorer ? (
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-base">
+                ⚽️
+              </span>
+              <div>
+                <p className="text-sm font-semibold">{myScorer.player_name}</p>
+                <p className="text-[11px] text-muted">
+                  Locked for the season · +1 pt per PL goal
+                </p>
+              </div>
+              <span className="ml-auto text-muted" aria-hidden>🔒</span>
+            </div>
+          ) : (
+            <>
+              <form onSubmit={handleScorer} className="flex gap-2">
+                <input
+                  className="input"
+                  placeholder="e.g. Erling Haaland"
+                  value={scorerInput}
+                  onChange={(e) => setScorerInput(e.target.value)}
+                  required
+                  minLength={2}
+                  maxLength={60}
+                />
+                <button className="btn-primary shrink-0" disabled={busy}>
+                  Lock it in
+                </button>
+              </form>
+              <p className="mt-2 text-[11px] text-muted">
+                Choose carefully — picks are final for the season. Goals are matched
+                automatically from live data (surname alone usually works).
+              </p>
+            </>
           )}
-          <form onSubmit={handleScorer} className="flex gap-2">
-            <input
-              className="input"
-              placeholder={myScorer ? 'Change your pick…' : 'e.g. Erling Haaland'}
-              value={scorerInput}
-              onChange={(e) => setScorerInput(e.target.value)}
-              required
-              minLength={2}
-              maxLength={60}
-            />
-            <button className="btn-primary shrink-0" disabled={busy}>
-              Save
-            </button>
-          </form>
-          <p className="mt-2 text-[11px] text-muted">
-            Goals are matched automatically from live data — use the player's name as it
-            appears on ESPN (surname alone usually works).
-          </p>
         </div>
       </section>
 
@@ -156,11 +163,7 @@ export default function Teams() {
               const isMine = ownerId === userId;
               return (
                 <div key={club.id} className="flex items-center gap-3 px-4 py-2.5">
-                  {club.logo ? (
-                    <img src={club.logo} alt="" className="h-6 w-6 object-contain" loading="lazy" />
-                  ) : (
-                    <span className="h-6 w-6 rounded-full bg-surface-2" />
-                  )}
+                  <ClubCrest teamId={club.id} name={club.name} size={24} />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{club.name}</span>
 
                   {isAdmin ? (
@@ -178,24 +181,13 @@ export default function Teams() {
                       ))}
                     </select>
                   ) : owner ? (
-                    <span className="flex items-center gap-2">
-                      <span className="flex items-center gap-1.5 text-xs text-muted">
-                        <MemberAvatar
-                          id={owner.user_id}
-                          name={owner.profile?.display_name ?? 'Player'}
-                          size={20}
-                        />
-                        {isMine ? 'You' : owner.profile?.display_name}
-                      </span>
-                      {isMine && (
-                        <button
-                          onClick={() => handleRelease(club.id)}
-                          disabled={busy}
-                          className="text-[11px] font-semibold text-red-500 disabled:opacity-50"
-                        >
-                          Remove
-                        </button>
-                      )}
+                    <span className="flex items-center gap-1.5 text-xs text-muted">
+                      <MemberAvatar
+                        id={owner.user_id}
+                        name={owner.profile?.display_name ?? 'Player'}
+                        size={20}
+                      />
+                      {isMine ? 'You' : owner.profile?.display_name}
                     </span>
                   ) : (
                     <button
@@ -214,8 +206,8 @@ export default function Teams() {
 
         <p className="mt-2 text-[11px] text-muted">
           {isAdmin
-            ? 'As admin you can assign any club directly; everyone else claims their own.'
-            : `Claim up to ${perPlayer || '—'} clubs. Remove one of yours to swap.`}{' '}
+            ? 'As admin you can assign or correct any club; everyone else claims their own.'
+            : `Claim up to ${perPlayer || '—'} clubs — picks are final once made (the admin can fix genuine mistakes).`}{' '}
           Leagues run with 3–{MAX_LEAGUE_SIZE} players.
         </p>
       </section>

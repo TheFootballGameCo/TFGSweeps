@@ -158,21 +158,18 @@ create policy "claim or admin-assign team picks" on public.team_picks
     public.is_league_admin(league_id)
     or (user_id = auth.uid() and public.is_league_member(league_id))
   );
-create policy "release own or admin deletes team picks" on public.team_picks
-  for delete to authenticated using (
-    public.is_league_admin(league_id) or user_id = auth.uid()
-  );
+-- Picks are FINAL: only admins can remove/correct a club assignment.
+create policy "admin deletes team picks" on public.team_picks
+  for delete to authenticated using (public.is_league_admin(league_id));
 
--- Scorer picks: members read; each member manages their OWN pick.
+-- Scorer picks: members read; each member sets their OWN pick once.
+-- No update/delete policies = picks are FINAL for the season (the unique
+-- (league_id, user_id) constraint blocks second attempts).
 create policy "scorer picks readable" on public.scorer_picks
   for select to authenticated using (public.is_league_member(league_id));
 create policy "own scorer pick insert" on public.scorer_picks
   for insert to authenticated
   with check (user_id = auth.uid() and public.is_league_member(league_id));
-create policy "own scorer pick update" on public.scorer_picks
-  for update to authenticated using (user_id = auth.uid());
-create policy "own scorer pick delete" on public.scorer_picks
-  for delete to authenticated using (user_id = auth.uid());
 
 -- ============================================================================
 -- Join a league by code.

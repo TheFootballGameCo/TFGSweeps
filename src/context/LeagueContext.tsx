@@ -88,10 +88,8 @@ interface LeagueContextValue {
   joinLeague: (code: string) => Promise<{ error: string | null; leagueId?: string }>;
   leaveLeague: (leagueId: string) => Promise<string | null>;
   assignTeam: (teamId: string, teamName: string, userId: string | null) => Promise<string | null>;
-  /** Member: claim an unowned club for yourself. */
+  /** Member: claim an unowned club for yourself. Final once made. */
   claimTeam: (teamId: string, teamName: string) => Promise<string | null>;
-  /** Member: give up one of your own clubs. */
-  releaseTeam: (teamId: string) => Promise<string | null>;
   randomiseTeams: (clubs: Array<{ id: string; name: string }>) => Promise<string | null>;
   setScorerPick: (playerName: string) => Promise<string | null>;
   /** Admin: change the per-player stake shown in the prize pot. */
@@ -366,31 +364,6 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
     [activeLeagueId, userId, teamPicks, refreshLeagueData, isDemo]
   );
 
-  /** Member: give up one of your own clubs. */
-  const releaseTeam = useCallback(
-    async (teamId: string) => {
-      if (!activeLeagueId || !userId) return 'No active league';
-
-      if (isDemo) {
-        setTeamPicks((picks) =>
-          picks.filter((p) => !(p.team_id === teamId && p.user_id === userId))
-        );
-        return null;
-      }
-
-      const { error } = await supabase
-        .from('team_picks')
-        .delete()
-        .eq('league_id', activeLeagueId)
-        .eq('team_id', teamId)
-        .eq('user_id', userId);
-      if (error) return error.message;
-      await refreshLeagueData();
-      return null;
-    },
-    [activeLeagueId, userId, refreshLeagueData, isDemo]
-  );
-
   /** Admin: change the per-player stake shown in the prize pot. */
   const updateStake = useCallback(
     async (amount: number) => {
@@ -416,14 +389,16 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
     [activeLeagueId, loadLeagues, isDemo]
   );
 
-  /** Member: set (or change) my goalscorer pick. */
+  /** Member: lock in my goalscorer pick. One shot — final for the season. */
   const setScorerPick = useCallback(
     async (playerName: string) => {
       if (!activeLeagueId || !userId) return 'No active league';
+      if (scorerPicks.some((p) => p.user_id === userId))
+        return 'Your goalscorer pick is locked for the season';
 
       if (isDemo) {
         setScorerPicks((picks) => [
-          ...picks.filter((p) => p.user_id !== userId),
+          ...picks,
           {
             id: `demo-s-${userId}`,
             league_id: activeLeagueId,
@@ -434,17 +409,19 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
         return null;
       }
 
-      const { error } = await supabase
-        .from('scorer_picks')
-        .upsert(
-          { league_id: activeLeagueId, user_id: userId, player_name: playerName },
-          { onConflict: 'league_id,user_id' }
-        );
-      if (error) return error.message;
+      const { error } = await supabase.from('scorer_picks').insert({
+        league_id: activeLeagueId,
+        user_id: userId,
+        player_name: playerName,
+      });
+      if (error)
+        return error.code === '23505'
+          ? 'Your goalscorer pick is locked for the season'
+          : error.message;
       await refreshLeagueData();
       return null;
     },
-    [activeLeagueId, userId, refreshLeagueData, isDemo]
+    [activeLeagueId, userId, scorerPicks, refreshLeagueData, isDemo]
   );
 
   return (
@@ -464,7 +441,6 @@ export function LeagueProvider({ children }: { children: ReactNode }) {
         leaveLeague,
         assignTeam,
         claimTeam,
-        releaseTeam,
         randomiseTeams,
         setScorerPick,
         updateStake,

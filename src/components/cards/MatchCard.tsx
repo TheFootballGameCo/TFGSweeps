@@ -2,19 +2,20 @@
 // pulsing badge while live.
 import type { Match } from '../../types';
 import { cx, formatKickOff, formatMatchDate } from '../../lib/ui';
+import ClubCrest from '../ClubCrest';
 
 interface OwnerLookup {
   (teamId: string): string | null;
 }
 
 function TeamSide({
+  teamId,
   name,
-  logo,
   owner,
   align,
 }: {
+  teamId: string;
   name: string;
-  logo: string;
   owner: string | null;
   align: 'left' | 'right';
 }) {
@@ -25,11 +26,7 @@ function TeamSide({
         align === 'right' && 'flex-row-reverse text-right'
       )}
     >
-      {logo ? (
-        <img src={logo} alt="" className="h-6 w-6 shrink-0 object-contain" loading="lazy" />
-      ) : (
-        <span className="h-6 w-6 shrink-0 rounded-full bg-surface-2" />
-      )}
+      <ClubCrest teamId={teamId} name={name} size={22} />
       <span className="min-w-0">
         <span className="block truncate text-sm font-medium">{name}</span>
         {owner && <span className="block truncate text-[10px] text-muted">{owner}</span>}
@@ -51,8 +48,8 @@ export default function MatchCard({
   return (
     <div className="card flex items-center gap-3 px-4 py-3 animate-fade-in">
       <TeamSide
+        teamId={match.homeTeamId}
         name={match.homeTeam}
-        logo={match.homeLogo}
         owner={ownerFor(match.homeTeamId)}
         align="left"
       />
@@ -82,8 +79,8 @@ export default function MatchCard({
       </div>
 
       <TeamSide
+        teamId={match.awayTeamId}
         name={match.awayTeam}
-        logo={match.awayLogo}
         owner={ownerFor(match.awayTeamId)}
         align="right"
       />

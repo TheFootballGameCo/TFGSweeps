@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useStandings } from '../hooks/useStandings';
 import MemberAvatar from '../components/MemberAvatar';
 import SectionHeading from '../components/SectionHeading';
+import ClubCrest from '../components/ClubCrest';
 import { cx } from '../lib/ui';
 
 export default function Leaderboard() {
@@ -59,11 +60,7 @@ export default function Leaderboard() {
                       <div className="space-y-2">
                         {s.teams.map((t) => (
                           <div key={t.teamId} className="flex items-center gap-2 text-sm">
-                            {t.logo ? (
-                              <img src={t.logo} alt="" className="h-5 w-5 object-contain" />
-                            ) : (
-                              <span className="h-5 w-5 rounded-full bg-surface-2" />
-                            )}
+                            <ClubCrest teamId={t.teamId} name={t.name} size={18} />
                             <span className="min-w-0 flex-1 truncate">{t.name}</span>
                             <span className="text-xs text-muted">
                               {t.wins}W {t.draws}D {t.losses}L

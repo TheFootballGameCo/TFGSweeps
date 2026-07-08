@@ -144,7 +144,14 @@ export default function Dashboard() {
               <div key={s.userId} className="flex items-center gap-3 px-4 py-3">
                 <span className="w-5 text-center text-sm font-bold text-muted">{s.position}</span>
                 <MemberAvatar id={s.userId} name={s.name} size={32} />
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold">{s.name}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold">{s.name}</span>
+                  <span className="block truncate text-[11px] text-muted">
+                    {s.scorerName
+                      ? `${s.scorerGoals} goal${s.scorerGoals === 1 ? '' : 's'} from ${s.scorerName}`
+                      : 'No scorer picked yet'}
+                  </span>
+                </span>
                 <span className="text-sm font-bold tabular-nums">{s.totalPoints} pts</span>
               </div>
             ))}

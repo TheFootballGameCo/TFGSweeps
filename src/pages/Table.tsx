@@ -2,6 +2,7 @@
 import { useData } from '../context/DataContext';
 import { useStandings } from '../hooks/useStandings';
 import SectionHeading from '../components/SectionHeading';
+import ClubCrest from '../components/ClubCrest';
 import { cx } from '../lib/ui';
 
 export default function Table() {
@@ -49,11 +50,7 @@ export default function Table() {
                     </td>
                     <td className="px-2 py-2.5">
                       <span className="flex items-center gap-2">
-                        {row.logo ? (
-                          <img src={row.logo} alt="" className="h-5 w-5 object-contain" loading="lazy" />
-                        ) : (
-                          <span className="h-5 w-5 rounded-full bg-surface-2" />
-                        )}
+                        <ClubCrest teamId={row.teamId} name={row.name} size={18} />
                         <span className="font-medium">{row.name}</span>
                       </span>
                     </td>

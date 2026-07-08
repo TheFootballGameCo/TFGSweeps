@@ -76,8 +76,9 @@ export const DEMO_TEAM_PICKS: TeamPick[] = Object.entries(allocation).flatMap(
     }))
 );
 
+// Jack (you) has no pick yet so the "lock it in" flow can be tried in the
+// demo — it resets on refresh. The others are locked, as they would be.
 export const DEMO_SCORER_PICKS: ScorerPick[] = [
-  { id: 'demo-s-1', league_id: DEMO_LEAGUE.id, user_id: DEMO_USER_ID, player_name: 'Haaland' },
   { id: 'demo-s-2', league_id: DEMO_LEAGUE.id, user_id: 'demo-simon', player_name: 'Salah' },
   { id: 'demo-s-3', league_id: DEMO_LEAGUE.id, user_id: 'demo-sam', player_name: 'Isak' },
   { id: 'demo-s-4', league_id: DEMO_LEAGUE.id, user_id: 'demo-jamie', player_name: 'Palmer' },
