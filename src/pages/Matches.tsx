@@ -1,43 +1,40 @@
-// All fixtures & results, grouped by day, filterable: all / results / upcoming /
-// my clubs. Defaults the view around "today".
+// All fixtures & results, grouped by day. Filters: all / results / upcoming /
+// per player (matches involving their clubs).
 import { useMemo, useState } from 'react';
 import { useData } from '../context/DataContext';
-import { useAuth } from '../context/AuthContext';
-import { useLeague } from '../context/LeagueContext';
 import { useStandings } from '../hooks/useStandings';
 import MatchCard from '../components/cards/MatchCard';
 import { cx, formatMatchDate } from '../lib/ui';
+import { PLAYERS, OWNERSHIP, type PlayerName } from '../config/sweepstake';
 import type { Match } from '../types';
 
-type Filter = 'all' | 'results' | 'upcoming' | 'mine';
+type Filter = 'all' | 'results' | 'upcoming' | PlayerName;
 
 export default function Matches() {
   const { data } = useData();
-  const { userId } = useAuth();
-  const { teamPicks } = useLeague();
   const { ownerFor } = useStandings();
   const [filter, setFilter] = useState<Filter>('all');
-
-  const myTeamIds = useMemo(
-    () => new Set(teamPicks.filter((p) => p.user_id === userId).map((p) => p.team_id)),
-    [teamPicks, userId]
-  );
 
   const filtered = useMemo(() => {
     const matches = data?.matches ?? [];
     switch (filter) {
+      case 'all':
+        return matches;
       case 'results':
         return matches.filter((m) => m.status === 'finished').reverse();
       case 'upcoming':
         return matches.filter((m) => m.status !== 'finished');
-      case 'mine':
-        return matches.filter(
-          (m) => myTeamIds.has(m.homeTeamId) || myTeamIds.has(m.awayTeamId)
+      default: {
+        // Player filter: matches involving any of their clubs.
+        const theirs = new Set(
+          Object.entries(OWNERSHIP)
+            .filter(([, owner]) => owner === filter)
+            .map(([teamId]) => teamId)
         );
-      default:
-        return matches;
+        return matches.filter((m) => theirs.has(m.homeTeamId) || theirs.has(m.awayTeamId));
+      }
     }
-  }, [data, filter, myTeamIds]);
+  }, [data, filter]);
 
   // Group by calendar day.
   const groups = useMemo(() => {
@@ -53,7 +50,7 @@ export default function Matches() {
     { id: 'all', label: 'All' },
     { id: 'results', label: 'Results' },
     { id: 'upcoming', label: 'Upcoming' },
-    { id: 'mine', label: 'My clubs' },
+    ...PLAYERS.map((p) => ({ id: p as Filter, label: p })),
   ];
 
   return (

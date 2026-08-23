@@ -21,34 +21,34 @@ function mulberry32(seed: number) {
   };
 }
 
-/** Club strength order (loosely last season's table). Lower index = stronger. */
+/** Club strength order (rough 2026/27 pecking order). Lower index = stronger. */
 const STRENGTH_ORDER = [
-  '359', '382', '360', '362', '364', '349', '366', '331', '337', '363',
-  '370', '361', '368', '357', '384', '393', '367', '371', '379', '380',
+  '364', '359', '382', '363', '361', '362', '367', '360', '331', '384',
+  '393', '337', '349', '370', '368', '366', '357', '388', '373', '306',
 ];
 
 /** 2-3 recognisable scorers per club, first name weighted heaviest. */
 const SCORERS: Record<string, string[]> = {
-  '359': ['Bukayo Saka', 'Kai Havertz', 'Martin Ødegaard'],
+  '359': ['Bukayo Saka', 'Viktor Gyökeres', 'Martin Ødegaard'],
   '382': ['Erling Haaland', 'Phil Foden', 'Omar Marmoush'],
-  '360': ['Bruno Fernandes', 'Rasmus Højlund', 'Amad Diallo'],
-  '362': ['Ollie Watkins', 'Morgan Rogers', 'Leon Bailey'],
-  '364': ['Mohamed Salah', 'Cody Gakpo', 'Luis Díaz'],
+  '360': ['Bryan Mbeumo', 'Bruno Fernandes', 'Matheus Cunha'],
+  '362': ['Ollie Watkins', 'Morgan Rogers', 'Emiliano Buendía'],
+  '364': ['Alexander Isak', 'Mohamed Salah', 'Hugo Ekitike'],
   '349': ['Antoine Semenyo', 'Justin Kluivert', 'Evanilson'],
-  '366': ['Wilson Isidor', 'Eliezer Mayenda', 'Patrick Roberts'],
-  '331': ['Danny Welbeck', 'Kaoru Mitoma', 'João Pedro'],
-  '337': ['Bryan Mbeumo', 'Yoane Wissa', 'Kevin Schade'],
-  '363': ['Cole Palmer', 'Nicolas Jackson', 'Noni Madueke'],
+  '366': ['Wilson Isidor', 'Eliezer Mayenda', 'Granit Xhaka'],
+  '331': ['Danny Welbeck', 'Kaoru Mitoma', 'Georginio Rutter'],
+  '337': ['Igor Thiago', 'Kevin Schade', 'Keane Lewis-Potter'],
+  '363': ['Cole Palmer', 'João Pedro', 'Liam Delap'],
   '370': ['Raúl Jiménez', 'Alex Iwobi', 'Rodrigo Muniz'],
-  '361': ['Alexander Isak', 'Anthony Gordon', 'Harvey Barnes'],
-  '368': ['Dominic Calvert-Lewin', 'Iliman Ndiaye', 'Dwight McNeil'],
-  '357': ['Joël Piroe', 'Daniel James', 'Wilfried Gnonto'],
-  '384': ['Jean-Philippe Mateta', 'Eberechi Eze', 'Ismaïla Sarr'],
+  '361': ['Anthony Gordon', 'Yoane Wissa', 'Harvey Barnes'],
+  '368': ['Iliman Ndiaye', 'Beto', 'Dwight McNeil'],
+  '357': ['Joël Piroe', 'Dominic Calvert-Lewin', 'Wilfried Gnonto'],
+  '384': ['Jean-Philippe Mateta', 'Ismaïla Sarr', 'Daichi Kamada'],
   '393': ['Chris Wood', 'Morgan Gibbs-White', 'Callum Hudson-Odoi'],
-  '367': ['Son Heung-Min', 'Dominic Solanke', 'Brennan Johnson'],
-  '371': ['Jarrod Bowen', 'Mohammed Kudus', 'Tomáš Souček'],
-  '379': ['Lyle Foster', 'Jaidon Anthony', 'Josh Brownhill'],
-  '380': ['Matheus Cunha', 'Jørgen Strand Larsen', 'Hwang Hee-Chan'],
+  '367': ['Dominic Solanke', 'Richarlison', 'Brennan Johnson'],
+  '388': ['Haji Wright', 'Brandon Thomas-Asante', 'Jack Rudoni'],
+  '373': ['George Hirst', 'Jaden Philogene', 'Sammie Szmodics'],
+  '306': ['Joe Gelhardt', 'Kyle Joseph', 'Regan Slater'],
 };
 
 function strengthOf(teamId: string): number {
@@ -120,8 +120,8 @@ export function generateSampleSeason(): SampleSeason {
   const clubIndex = new Map(clubs.map((c) => [c.id, c]));
   const rounds = buildRounds(clubs.map((c) => c.id));
 
-  // Saturdays from 16 Aug 2025, one round a week.
-  const firstKickOff = Date.UTC(2025, 7, 16, 14, 0, 0);
+  // Saturdays from 15 Aug 2026, one round a week.
+  const firstKickOff = Date.UTC(2026, 7, 15, 14, 0, 0);
   const week = 7 * 24 * 60 * 60 * 1000;
 
   const matches: Match[] = [];

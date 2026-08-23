@@ -5,7 +5,7 @@
 export type MatchStatus = 'scheduled' | 'live' | 'finished';
 
 export interface GoalEvent {
-  /** Scorer display name (lower-cased for matching happens in scoring.ts). */
+  /** Scorer display name (matching happens in scoring.ts, lower-cased). */
   scorer: string;
   /** ESPN team id of the scoring side. */
   teamId: string;
@@ -46,7 +46,7 @@ export interface TableRow {
   points: number;
 }
 
-/** A PL club (derived from the standings feed, so it tracks promotions). */
+/** A PL club (from the standings feed or the static fallback list). */
 export interface Club {
   id: string;
   name: string;
@@ -63,70 +63,36 @@ export interface PlData {
   usingSampleData: boolean;
 }
 
-// --- League / multiplayer (stored in Supabase) ---
-
-export interface Profile {
-  id: string;
-  display_name: string;
-}
-
-export interface League {
-  id: string;
-  name: string;
-  join_code: string;
-  owner_id: string;
-  season_label: string;
-  /** How much each player puts in the pot (settled outside the app). */
-  stake_per_player: number;
-  created_at: string;
-}
-
-export interface Membership {
-  id: string;
-  league_id: string;
-  user_id: string;
-  role: 'admin' | 'member';
-  /** Joined-in profile for display. */
-  profile?: Profile;
-}
-
-export interface TeamPick {
-  id: string;
-  league_id: string;
-  user_id: string;
-  team_id: string;
-  team_name: string;
-}
-
-export interface ScorerPick {
-  id: string;
-  league_id: string;
-  user_id: string;
-  player_name: string;
-}
-
-// --- Derived sweepstake standings (computed client-side) ---
+// --- Derived sweepstake standings (computed client-side from config) ---
 
 export interface OwnedTeamRecord {
   teamId: string;
   name: string;
-  logo: string;
   played: number;
   wins: number;
   draws: number;
   losses: number;
   goalDifference: number;
-  points: number; // sweepstake points this team has earned its owner
+  points: number; // sweepstake points this club has earned its owner
 }
 
-export interface MemberStanding {
-  userId: string;
+export interface ScorerSummary {
+  /** Current (active) pick's display name. */
+  name: string;
+  /** Total scorer points across the pick history (windowed by change dates). */
+  goals: number;
+  points: number;
+  /** True once the one allowed change has been used. */
+  changeUsed: boolean;
+  /** Name of the original pick if a change was made. */
+  changedFrom: string | null;
+}
+
+export interface PlayerStanding {
   name: string;
   teams: OwnedTeamRecord[];
   teamPoints: number;
-  scorerName: string | null;
-  scorerGoals: number;
-  scorerPoints: number;
+  scorer: ScorerSummary;
   totalPoints: number;
   wins: number;
   draws: number;

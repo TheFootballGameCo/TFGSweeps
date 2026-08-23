@@ -36,6 +36,10 @@ const STYLES: Record<string, CrestStyle> = {
   '367': { primary: '#FFFFFF', secondary: '#132257', pattern: 'solid', text: '#132257', abbr: 'TOT' },
   '371': { primary: '#7A263A', secondary: '#1BB1E7', pattern: 'halves', text: '#FFFFFF', abbr: 'WHU' },
   '380': { primary: '#FDB913', secondary: '#231F20', pattern: 'solid', text: '#231F20', abbr: 'WOL' },
+  // 2026/27 promoted clubs
+  '388': { primary: '#78D0F5', secondary: '#FFFFFF', pattern: 'solid', text: '#1B3B6B', abbr: 'COV' },
+  '373': { primary: '#3A64A3', secondary: '#FFFFFF', pattern: 'solid', text: '#FFFFFF', abbr: 'IPS' },
+  '306': { primary: '#F5A12D', secondary: '#000000', pattern: 'stripes', text: '#000000', abbr: 'HUL' },
 };
 
 /** Deterministic fallback for clubs not in the map (e.g. promoted sides). */

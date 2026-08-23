@@ -1,32 +1,28 @@
-// Sticky top header: brand, league switcher, desktop nav, refresh + theme toggle.
-import { Link } from 'react-router-dom';
+// Sticky top header: brand, desktop nav, refresh + theme toggle.
 import { useData } from '../../context/DataContext';
-import { useLeague } from '../../context/LeagueContext';
 import { DesktopNav } from './Navigation';
 import ThemeToggle from '../ThemeToggle';
 import { cx, formatRelative } from '../../lib/ui';
+import { SEASON } from '../../config/app';
 
 export default function Header() {
   const { data, refreshing, refresh } = useData();
-  const { activeLeague } = useLeague();
 
   return (
     <header className="pt-safe sticky top-0 z-20 border-b border-border bg-bg/80 backdrop-blur">
       <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-        {/* Brand — tapping it opens the league list */}
-        <Link to="/leagues" className="flex min-w-0 items-center gap-2">
+        {/* Brand */}
+        <div className="flex min-w-0 items-center gap-2">
           <span className="text-xl" aria-hidden>⚽️</span>
           <span className="min-w-0">
             <span className="block truncate font-bold leading-tight tracking-tight">
-              {activeLeague?.name ?? 'TFG Sweeps'}
+              TFG Sweeps
             </span>
-            {activeLeague && (
-              <span className="block text-[10px] leading-tight text-muted">
-                TFG Sweeps · {activeLeague.season_label}
-              </span>
-            )}
+            <span className="block text-[10px] leading-tight text-muted">
+              Premier League {SEASON.label}
+            </span>
           </span>
-        </Link>
+        </div>
 
         <div className="mx-auto">
           <DesktopNav />
