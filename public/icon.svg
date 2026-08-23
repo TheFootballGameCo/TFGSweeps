@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- TFG Sweeps app icon: dark rounded tile, pitch-green ball + trophy mark -->
-  <rect width="512" height="512" rx="112" fill="#0a0a0b"/>
-  <circle cx="256" cy="230" r="118" fill="none" stroke="#10b981" stroke-width="22"/>
-  <path d="M256 168l58 42-22 68h-72l-22-68z" fill="#10b981"/>
-  <path d="M170 392h172M204 392v-28h104v28" fill="none" stroke="#f4f4f5" stroke-width="20" stroke-linecap="round"/>
-</svg>
