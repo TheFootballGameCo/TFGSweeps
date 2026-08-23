@@ -5,9 +5,11 @@
 export type MatchStatus = 'scheduled' | 'live' | 'finished';
 
 export interface GoalEvent {
-  /** Scorer display name (matching happens in scoring.ts, lower-cased). */
+  /** Scorer full display name (used for scorer-pick matching). */
   scorer: string;
-  /** ESPN team id of the scoring side. */
+  /** Short display name for the UI, e.g. "E. Haaland". */
+  scorerShort: string;
+  /** ESPN team id of the side credited with the goal. */
   teamId: string;
   ownGoal: boolean;
   clock: string;

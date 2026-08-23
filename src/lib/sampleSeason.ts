@@ -8,6 +8,7 @@
 
 import type { Match, GoalEvent, TableRow, Club } from '../types';
 import { FALLBACK_CLUBS } from './clubs';
+import { shortPlayerName } from './ui';
 
 /** Small, fast seeded RNG so results are stable across loads. */
 function mulberry32(seed: number) {
@@ -139,16 +140,20 @@ export function generateSampleSeason(): SampleSeason {
 
       const goals: GoalEvent[] = [];
       for (let g = 0; g < homeScore; g++) {
+        const scorer = pickScorer(rand, homeId);
         goals.push({
-          scorer: pickScorer(rand, homeId),
+          scorer,
+          scorerShort: shortPlayerName(scorer),
           teamId: homeId,
           ownGoal: false,
           clock: `${Math.floor(rand() * 90) + 1}'`,
         });
       }
       for (let g = 0; g < awayScore; g++) {
+        const scorer = pickScorer(rand, awayId);
         goals.push({
-          scorer: pickScorer(rand, awayId),
+          scorer,
+          scorerShort: shortPlayerName(scorer),
           teamId: awayId,
           ownGoal: false,
           clock: `${Math.floor(rand() * 90) + 1}'`,

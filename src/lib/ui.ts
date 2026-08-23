@@ -29,6 +29,13 @@ export function formatKickOff(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 }
 
+/** "Erling Haaland" -> "E. Haaland"; single names pass through. */
+export function shortPlayerName(full: string): string {
+  const parts = full.trim().split(/\s+/);
+  if (parts.length < 2) return full;
+  return `${parts[0][0]}. ${parts.slice(1).join(' ')}`;
+}
+
 /** Initials for avatars: "Jack Levick" -> "JL". */
 export function initials(name: string): string {
   return name

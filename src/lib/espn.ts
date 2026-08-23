@@ -12,6 +12,7 @@
 import type { Match, MatchStatus, GoalEvent, TableRow, Club } from '../types';
 import { API, SEASON } from '../config/app';
 import { FALLBACK_CLUBS } from './clubs';
+import { shortPlayerName } from './ui';
 
 // ESPN's public API sends permissive CORS headers, so the browser can fetch
 // it directly — no server needed. The Vercel proxy remains as a backup path.
@@ -53,6 +54,8 @@ interface EspnDetail {
   team?: { id?: string };
   athletesInvolved?: Array<{ displayName?: string; shortName?: string }>;
 }
+
+// (shortPlayerName imported below with the other ui helpers)
 interface EspnStatus {
   displayClock?: string;
   type?: { state?: string; completed?: boolean; shortDetail?: string };
@@ -93,12 +96,17 @@ function parseEvent(event: EspnEvent): Match | null {
 
   const goals: GoalEvent[] = (comp?.details ?? [])
     .filter((d) => d.scoringPlay)
-    .map((d) => ({
-      scorer: d.athletesInvolved?.[0]?.displayName ?? '',
-      teamId: d.team?.id ?? '',
-      ownGoal: Boolean(d.ownGoal),
-      clock: d.clock?.displayValue ?? '',
-    }))
+    .map((d) => {
+      const athlete = d.athletesInvolved?.[0];
+      const full = athlete?.displayName ?? '';
+      return {
+        scorer: full,
+        scorerShort: athlete?.shortName ?? shortPlayerName(full),
+        teamId: d.team?.id ?? '',
+        ownGoal: Boolean(d.ownGoal),
+        clock: d.clock?.displayValue ?? '',
+      };
+    })
     .filter((g) => g.scorer);
 
   const logoOf = (c: EspnCompetitor) => c.team?.logo ?? c.team?.logos?.[0]?.href ?? '';
