@@ -13,6 +13,26 @@ import type { Match, MatchStatus, GoalEvent, TableRow, Club } from '../types';
 import { API, SEASON } from '../config/app';
 import { FALLBACK_CLUBS } from './clubs';
 
+// ESPN's public API sends permissive CORS headers, so the browser can fetch
+// it directly — no server needed. The Vercel proxy remains as a backup path.
+const DIRECT = {
+  scoreboard: 'https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard',
+  standings: 'https://site.api.espn.com/apis/v2/sports/soccer/eng.1/standings',
+} as const;
+
+/** Fetch JSON from the direct ESPN URL, falling back to the proxy path. */
+async function fetchJson<T>(directUrl: string, proxyUrl: string): Promise<T> {
+  try {
+    const res = await fetch(directUrl);
+    if (!res.ok) throw new Error(`ESPN responded ${res.status}`);
+    return (await res.json()) as T;
+  } catch {
+    const res = await fetch(proxyUrl);
+    if (!res.ok) throw new Error(`Feed request failed (${res.status})`);
+    return (await res.json()) as T;
+  }
+}
+
 // --- Minimal typings for the slice of ESPN's response we use ---
 interface EspnCompetitor {
   homeAway?: 'home' | 'away';
@@ -136,11 +156,12 @@ export async function fetchSeasonMatches(): Promise<{ matches: Match[]; sample: 
 async function fetchSeasonMatchesLive(): Promise<Match[]> {
   const ranges = monthRanges(SEASON.startDate, SEASON.endDate);
   const responses = await Promise.all(
-    ranges.map(async (dates) => {
-      const res = await fetch(`${API.scoreboardPath}?dates=${dates}`);
-      if (!res.ok) throw new Error(`Scoreboard request failed (${res.status})`);
-      return (await res.json()) as { events?: EspnEvent[] };
-    })
+    ranges.map((dates) =>
+      fetchJson<{ events?: EspnEvent[] }>(
+        `${DIRECT.scoreboard}?dates=${dates}&limit=400`,
+        `${API.scoreboardPath}?dates=${dates}`
+      )
+    )
   );
 
   const seen = new Set<string>();
@@ -196,12 +217,10 @@ export async function fetchTable(): Promise<{
 }
 
 async function fetchTableLive(): Promise<{ table: TableRow[]; clubs: Club[] }> {
-  const res = await fetch(`${API.standingsPath}?season=${SEASON.year}`);
-  if (!res.ok) throw new Error(`Standings request failed (${res.status})`);
-  const body = (await res.json()) as {
+  const body = await fetchJson<{
     children?: Array<{ standings?: { entries?: EspnStandingEntry[] } }>;
     standings?: { entries?: EspnStandingEntry[] };
-  };
+  }>(`${DIRECT.standings}?season=${SEASON.year}`, `${API.standingsPath}?season=${SEASON.year}`);
 
   const entries: EspnStandingEntry[] =
     body.children?.[0]?.standings?.entries ?? body.standings?.entries ?? [];
