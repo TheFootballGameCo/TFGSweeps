@@ -8,7 +8,7 @@ import { cx, formatMatchDate } from '../lib/ui';
 import { PLAYERS, OWNERSHIP, type PlayerName } from '../config/sweepstake';
 import type { Match } from '../types';
 
-type Filter = 'all' | 'results' | 'upcoming' | PlayerName;
+type Filter = 'all' | 'live' | 'results' | 'upcoming' | PlayerName;
 
 export default function Matches() {
   const { data } = useData();
@@ -20,6 +20,8 @@ export default function Matches() {
     switch (filter) {
       case 'all':
         return matches;
+      case 'live':
+        return matches.filter((m) => m.status === 'live');
       case 'results':
         return matches.filter((m) => m.status === 'finished').reverse();
       case 'upcoming':
@@ -46,8 +48,14 @@ export default function Matches() {
     return [...byDay.entries()];
   }, [filtered]);
 
+  const liveCount = useMemo(
+    () => (data?.matches ?? []).filter((m) => m.status === 'live').length,
+    [data]
+  );
+
   const filters: Array<{ id: Filter; label: string }> = [
     { id: 'all', label: 'All' },
+    { id: 'live', label: liveCount > 0 ? `Live (${liveCount})` : 'Live' },
     { id: 'results', label: 'Results' },
     { id: 'upcoming', label: 'Upcoming' },
     ...PLAYERS.map((p) => ({ id: p as Filter, label: p })),
@@ -62,12 +70,20 @@ export default function Matches() {
             key={f.id}
             onClick={() => setFilter(f.id)}
             className={cx(
-              'shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors',
+              'flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors',
               filter === f.id
                 ? 'bg-accent text-white'
                 : 'border border-border bg-surface text-muted hover:text-text'
             )}
           >
+            {f.id === 'live' && liveCount > 0 && (
+              <span
+                className={cx(
+                  'h-1.5 w-1.5 rounded-full animate-pulse-live',
+                  filter === 'live' ? 'bg-white' : 'bg-accent'
+                )}
+              />
+            )}
             {f.label}
           </button>
         ))}
@@ -75,7 +91,9 @@ export default function Matches() {
 
       {groups.length === 0 ? (
         <div className="card px-4 py-8 text-center text-sm text-muted">
-          No matches for this filter yet.
+          {filter === 'live'
+            ? 'No games in play right now — scores appear here the moment one kicks off.'
+            : 'No matches for this filter yet.'}
         </div>
       ) : (
         <div className="space-y-6">
