@@ -9,15 +9,18 @@
   opacity modifiers (e.g. bg-surface/60). Flipping .dark on <html> swaps the set.
 */
 @layer base {
+  /* Light palette matched to the TFG Sweeps artwork: warm cream ground,
+     ink-navy text, and the muted shirt colours as accents. */
   :root {
-    --bg: 249 249 247;          /* off-white */
-    --surface: 255 255 255;     /* card */
-    --surface-2: 244 244 241;   /* soft grey card */
-    --border: 230 230 226;
-    --text: 23 23 26;           /* near-black text */
-    --muted: 113 113 122;       /* secondary text */
-    --accent: 16 185 129;       /* emerald — pitch green */
-    --accent-soft: 209 250 229;
+    --bg: 247 243 234;          /* warm off-white (artwork cream, lightened) */
+    --surface: 253 251 246;     /* card */
+    --surface-2: 240 234 222;   /* deeper cream card */
+    --border: 224 216 200;      /* warm tan */
+    --text: 31 42 51;           /* ink navy (#1F2A33) */
+    --muted: 122 126 124;       /* warm grey */
+    --accent: 77 132 97;        /* muted pitch green (#4D8461) */
+    --accent-soft: 223 233 222;
+    --danger: 164 70 63;        /* muted red (#A4463F) */
   }
 
   .dark {
@@ -27,8 +30,9 @@
     --border: 38 38 43;
     --text: 244 244 245;        /* soft white */
     --muted: 161 161 170;
-    --accent: 16 185 129;
-    --accent-soft: 6 78 59;
+    --accent: 96 154 116;       /* artwork green, lifted for dark */
+    --accent-soft: 24 46 33;
+    --danger: 194 96 88;
   }
 
   html {

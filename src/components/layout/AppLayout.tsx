@@ -13,14 +13,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
       {/* Sample-data notice: the live feed couldn't be reached. */}
       {data?.usingSampleData && (
-        <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-1.5 text-center text-[11px] text-amber-600 dark:text-amber-400">
+        <div className="border-b border-[#DEAA5E]/30 bg-[#DEAA5E]/15 px-4 py-1.5 text-center text-[11px] text-[#8A6320] dark:text-[#DEAA5E]">
           Live feed unreachable — showing simulated results for now.
         </div>
       )}
 
       {/* Data-status notice when a refresh fails but we still have data. */}
       {error && data && !data.usingSampleData && (
-        <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-1.5 text-center text-[11px] text-amber-600 dark:text-amber-400">
+        <div className="border-b border-[#DEAA5E]/30 bg-[#DEAA5E]/15 px-4 py-1.5 text-center text-[11px] text-[#8A6320] dark:text-[#DEAA5E]">
           Live data refresh failed — showing the last good update.
         </div>
       )}

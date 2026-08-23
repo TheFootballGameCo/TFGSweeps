@@ -43,7 +43,7 @@ export default function Table() {
                       className={cx(
                         'px-3 py-2.5 font-semibold tabular-nums',
                         row.rank <= 4 && 'text-accent',
-                        row.rank >= 18 && 'text-red-500'
+                        row.rank >= 18 && 'text-danger'
                       )}
                     >
                       {row.rank}
